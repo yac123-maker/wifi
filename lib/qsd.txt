@@ -1,0 +1,87 @@
+import 'package:flutter/material.dart';
+import 'package:wifi_info_flutter/wifi_info_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+import 'dart:io';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final List<WifiFlutter> _wifiList = []; // Declare as final for clarity
+  bool _isLoading = true;
+
+  Future<void> _getWifiList() async {
+    if (Platform.isAndroid) {
+      var status = await Permission.locationWhenInUse.request();
+      if (!status.isGranted) {
+        // Handle permission denied case (e.g., show a dialog)
+        return;
+      }
+    }
+
+    var wifiInfo = await WifiInfoFlutter.wifiInfo;
+    if (wifiInfo.isNullOrEmpty) {
+      return;
+    }
+    setState(() {
+      _wifiList.add(wifiInfo); // Add WifiFlutter objects to the list
+      _isLoading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getWifiList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Available Wi-Fi Networks'),
+        ),
+        body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                itemCount: _wifiList.length,
+                itemBuilder: (context, index) {
+                  final wifi = _wifiList[index];
+                  return ListTile(
+                    title: Text(wifi.ssid!),
+                    subtitle: Text('${wifi.frequency} MHz, ${wifi.rssi} dBm'),
+                    trailing: IconButton(
+                      icon: Icon(Icons.info),
+                      onPressed: () {
+                        // Show a dialog or snackbar with additional details (optional)
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Wi-Fi Details'),
+                            content: Text(
+                              'SSID: ${wifi.ssid}\n'
+                              'BSSID: ${wifi.bssid}\n'
+                              'Frequency: ${wifi.frequency} MHz\n'
+                              'RSSI: ${wifi.rssi} dBm\n'
+                              'Capabilities: ${wifi.capabilities}\n',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
